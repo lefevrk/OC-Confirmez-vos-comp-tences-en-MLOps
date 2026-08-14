@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# uv
+.python-version
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Type checking / linting
+.pyright/
+.ruff_cache/
+.mypy_cache/
+
+# Logs (rotated loguru files, local only)
+*.log
+logs/
+
+# MLflow (local runs, if used ad hoc)
+mlruns/
+
+# Docs build
+site/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Working materials (project brief, plan, kaggle scripts) — kept locally, not versioned
+references/
