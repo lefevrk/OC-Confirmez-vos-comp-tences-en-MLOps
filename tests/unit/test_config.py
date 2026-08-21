@@ -7,8 +7,11 @@ import api.infra.config as config_module
 from api.infra.config import Settings, get_settings
 
 
-def test_settings_requires_mlflow_credentials() -> None:
+def test_settings_requires_mlflow_credentials(monkeypatch) -> None:
     """Startup must fail fast when MLflow connection details are missing."""
+    monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
+    monkeypatch.delenv("MLFLOW_TRACKING_USERNAME", raising=False)
+    monkeypatch.delenv("MLFLOW_TRACKING_PASSWORD", raising=False)
     with pytest.raises(ValidationError):
         Settings(_env_file=None)  # type: ignore[call-arg]
 
