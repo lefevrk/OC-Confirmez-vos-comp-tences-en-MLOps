@@ -7,10 +7,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --extra api --no-install-project --no-dev
+
+COPY src/api ./src/api
+RUN uv sync --extra api --no-dev
 
 ENV PATH="/app/.venv/bin:$PATH"
 
@@ -22,4 +29,4 @@ USER api
 
 EXPOSE 8000
 
-CMD ["python", "--version"]
+CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000"]
