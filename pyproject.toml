@@ -70,7 +70,8 @@ typeCheckingMode = "basic"
 useLibraryCodeForTypes = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests/"]
+pythonpath = ["."]
+testpaths = ["tests/unit", "tests/integration"]
 python_files = ["test_*.py", "**/test_.py", "test.py"]
 
 [tool.coverage.run]

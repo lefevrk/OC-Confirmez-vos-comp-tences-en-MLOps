@@ -2,30 +2,9 @@
 
 from pydantic import ValidationError
 import pytest
+from tests.payloads import valid_payload
 
 from api.modules.scoring.presentation.schemas import PredictionRequest
-
-
-def valid_payload() -> dict[str, float | int | str]:
-    """Build a valid request from the explicit manual serving schema."""
-    categorical_values = {
-        "organization_type": "Bank",
-        "code_gender": "F",
-        "occupation_type": "Accountants",
-        "name_family_status": "Married",
-        "name_education_type": "Higher education",
-    }
-
-    integer_fields = {"days_birth", "days_id_publish"}
-
-    return {
-        field_name: categorical_values.get(
-            field_name,
-            -1 if field_name in integer_fields else 1.0,
-        )
-        for field_name, field in PredictionRequest.model_fields.items()
-        if field.is_required()
-    }
 
 
 def test_schema_has_all_champion_input_fields() -> None:
