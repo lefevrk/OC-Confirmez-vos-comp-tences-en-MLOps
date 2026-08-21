@@ -6,3 +6,31 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      # Overrides the .env value so the containerized API reaches Postgres
+      # over the compose network; `make db-migrate` (run on the host) keeps
+      # using the .env value instead, which points at the published port.
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/credit_scoring
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: credit_scoring
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

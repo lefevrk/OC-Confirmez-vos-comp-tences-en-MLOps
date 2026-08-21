@@ -43,6 +43,9 @@ jobs:
         run: uv run pyright
 
       - name: Test
+        # tests/conftest.py starts its own PostgreSQL via testcontainers and
+        # migrates it — the ubuntu-latest runner ships Docker, no service
+        # container or $DATABASE_URL needed here.
         run: uv run pytest --cov=api --cov-report=term-missing --cov-fail-under=80
 
   determine-target:

@@ -6,6 +6,7 @@ from loguru import logger
 
 from api.infra.config import get_settings
 from api.modules.scoring.ports.model import ScoringModel
+from api.modules.scoring.ports.prediction_recorder import PredictionRecorder
 from api.modules.scoring.presentation.schemas import PredictionRequest, PredictionResponse
 from api.modules.scoring.services.predict import predict
 
@@ -43,6 +44,17 @@ def get_model(request: Request) -> ScoringModel:
     return model
 
 
+def get_recorder(request: Request) -> PredictionRecorder:
+    """Return the prediction recorder connected at startup. Returns 503 if unavailable."""
+    recorder = request.app.state.prediction_recorder
+    if recorder is None:
+        logger.warning("prediction_rejected_recorder_unavailable")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="storage unavailable"
+        )
+    return recorder
+
+
 @router.post(
     "",
     response_model=PredictionResponse,
@@ -50,10 +62,12 @@ def get_model(request: Request) -> ScoringModel:
     dependencies=[Depends(verify_token)],
 )
 def create_prediction(
-    payload: PredictionRequest, model: ScoringModel = Depends(get_model)
+    payload: PredictionRequest,
+    model: ScoringModel = Depends(get_model),
+    recorder: PredictionRecorder = Depends(get_recorder),
 ) -> PredictionResponse:
     """Score validated input with the model loaded during application startup."""
-    result = predict(model, payload.model_features())
+    result = predict(model, recorder, payload.model_features())
     return PredictionResponse(
         prediction_id=result.prediction_id,
         probability=result.probability,
