@@ -36,6 +36,7 @@ api = [
     "pydantic-settings",
     "sqlalchemy",
     "psycopg2-binary",
+    "alembic",
     "mlflow",
     "prometheus-client",
 ]

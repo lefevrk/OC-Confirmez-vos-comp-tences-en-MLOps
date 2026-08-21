@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     mlflow_tracking_username: str
     mlflow_tracking_password: str
 
+    # PostgreSQL prediction-event storage
+    database_url: str
+
     # Registered serving model
     model_name: str = "credit_scoring"
     model_alias: str = "champion"
