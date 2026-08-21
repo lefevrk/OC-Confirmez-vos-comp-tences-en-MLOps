@@ -3,7 +3,6 @@
 #################################################################################
 
 PROJECT_NAME = OC-Confirmez-vos-competences-en-MLOps
-IMAGE_NAME = credit-scoring-api
 
 #################################################################################
 # COMMANDS                                                                      #
@@ -22,12 +21,17 @@ run:
 ## Build the API Docker image
 .PHONY: docker-build
 docker-build:
-	docker build -t $(IMAGE_NAME) .
+	docker compose build
 
 ## Run the API Docker image locally
 .PHONY: docker-run
 docker-run:
-	docker run --rm -p 7860:7860 --env-file .env $(IMAGE_NAME)
+	docker compose up --build -d
+
+## Stop the local Docker Compose stack
+.PHONY: docker-down
+docker-down:
+	docker compose down
 
 ## Delete all compiled Python files
 .PHONY: clean
