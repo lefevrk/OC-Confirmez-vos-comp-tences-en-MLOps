@@ -27,7 +27,7 @@ docker-build:
 ## Run the API Docker image locally
 .PHONY: docker-run
 docker-run:
-	docker run --rm -p 7860:7860 --env-file .env $(IMAGE_NAME)
+	docker run --rm -p 8000:8000 --env-file .env $(IMAGE_NAME)
 
 ## Delete all compiled Python files
 .PHONY: clean
