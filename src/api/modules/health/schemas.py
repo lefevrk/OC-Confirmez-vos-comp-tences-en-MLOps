@@ -15,6 +15,7 @@ class ReadinessChecks(BaseModel):
     """Dependency states used to explain readiness failures."""
 
     model: Literal["ok", "error"]
+    database: Literal["ok", "error"]
 
 
 class ReadinessResponse(BaseModel):
