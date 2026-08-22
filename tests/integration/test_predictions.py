@@ -152,6 +152,32 @@ def test_prediction_persists_to_a_real_database(monkeypatch) -> None:
     assert row.features == PredictionRequest.model_validate(valid_payload()).model_features()
 
 
+def test_prediction_rejects_an_invalid_field_type() -> None:
+    """A malformed field type reaches the client as 422, not as an internal error."""
+    payload = valid_payload()
+    payload["days_birth"] = "not-an-integer"
+    with TestClient(app) as client:
+        response = client.post("/predictions", json=payload)
+    assert response.status_code == 422
+
+
+def test_prediction_rejects_an_out_of_range_value() -> None:
+    """A value outside its declared bounds reaches the client as 422."""
+    payload = valid_payload()
+    payload["amt_credit"] = 0
+    with TestClient(app) as client:
+        response = client.post("/predictions", json=payload)
+    assert response.status_code == 422
+
+
+def test_prediction_rejects_an_unknown_field() -> None:
+    """A field the champion contract does not know about reaches the client as 422."""
+    payload = {**valid_payload(), "unexpected": 1}
+    with TestClient(app) as client:
+        response = client.post("/predictions", json=payload)
+    assert response.status_code == 422
+
+
 def test_prediction_rejects_a_malformed_payload(monkeypatch) -> None:
     """A payload missing a required field is rejected before scoring or persistence run."""
     model = CountingModel()
