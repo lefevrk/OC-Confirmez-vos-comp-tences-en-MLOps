@@ -12,7 +12,12 @@ def test_liveness_does_not_require_dependencies(monkeypatch) -> None:
     )
     with TestClient(app) as client:
         assert client.get("/health").json() == {"status": "ok"}
-        assert client.get("/ready").status_code == 503
+        response = client.get("/ready")
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "degraded",
+        "checks": {"model": "error", "database": "ok"},
+    }
 
 
 class Model:
@@ -68,4 +73,9 @@ def test_startup_reports_a_degraded_readiness_when_settings_are_invalid(monkeypa
         "api.bootstrap.get_settings", lambda: (_ for _ in ()).throw(RuntimeError("bad env"))
     )
     with TestClient(app) as client:
-        assert client.get("/ready").status_code == 503
+        response = client.get("/ready")
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "degraded",
+        "checks": {"model": "error", "database": "error"},
+    }
