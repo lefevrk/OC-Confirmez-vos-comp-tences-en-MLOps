@@ -39,6 +39,32 @@ class FailingRecorder(FakeRecorder):
         raise RuntimeError("storage unavailable")
 
 
+class CountingModel(DeterministicModel):
+    """A model that counts how many times it was asked to score."""
+
+    def __init__(self) -> None:
+        """Start with no scoring calls recorded."""
+        self.call_count = 0
+
+    def probability(self, features: dict[str, float | int | str]) -> float:
+        """Record the call, then score as usual."""
+        self.call_count += 1
+        return super().probability(features)
+
+
+class CountingRecorder(FakeRecorder):
+    """A recorder that counts how many times it was asked to persist an event."""
+
+    def __init__(self) -> None:
+        """Start with no persistence calls recorded."""
+        self.call_count = 0
+
+    def record(self, event: object, features: dict[str, float | int | str]) -> None:
+        """Record the call, then accept the event as usual."""
+        self.call_count += 1
+        super().record(event, features)
+
+
 @pytest.fixture(autouse=True)
 def _model_loaded(monkeypatch) -> None:
     monkeypatch.setattr("api.bootstrap.load_champion", lambda _settings: DeterministicModel())
@@ -126,13 +152,21 @@ def test_prediction_persists_to_a_real_database(monkeypatch) -> None:
     assert row.features == PredictionRequest.model_validate(valid_payload()).model_features()
 
 
-def test_prediction_rejects_a_malformed_payload() -> None:
-    """A payload missing a required field is rejected before scoring runs."""
+def test_prediction_rejects_a_malformed_payload(monkeypatch) -> None:
+    """A payload missing a required field is rejected before scoring or persistence run."""
+    model = CountingModel()
+    recorder = CountingRecorder()
+    monkeypatch.setattr("api.bootstrap.load_champion", lambda _settings: model)
+    monkeypatch.setattr("api.bootstrap.connect_prediction_recorder", lambda _settings: recorder)
+
     payload = valid_payload()
     del payload["payment_credit_ratio"]
     with TestClient(app) as client:
         response = client.post("/predictions", json=payload)
+
     assert response.status_code == 422
+    assert model.call_count == 0
+    assert recorder.call_count == 0
 
 
 @pytest.fixture
