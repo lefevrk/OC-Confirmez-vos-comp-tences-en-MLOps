@@ -28,11 +28,16 @@ jobs:
           ssh_opts=(-o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key)
           vps_target="${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}"
 
-          # deploy/compose.yml is the single source of truth for this
-          # commit's deployment topology — always overwrite the VPS's copy,
-          # never hand-edit it there. Only .env (secrets, IMAGE_TAG,
-          # HOST_PORT) stays VPS-local.
+          # deploy/compose.yml and deploy/alloy/config.alloy are the single
+          # source of truth for this commit's deployment topology — always
+          # overwrite the VPS's copies, never hand-edit them there. Only
+          # .env (secrets, IMAGE_TAG, HOST_PORT) stays VPS-local.
+          # rm -rf guards against a stale docker-auto-created directory at
+          # this path from a previous deploy that ran before this file existed.
+          ssh "${ssh_opts[@]}" "$vps_target" \
+            "mkdir -p ${{ vars.VPS_PATH }}/alloy && rm -rf ${{ vars.VPS_PATH }}/alloy/config.alloy"
           scp "${ssh_opts[@]}" deploy/compose.yml "${vps_target}:${{ vars.VPS_PATH }}/compose.yml"
+          scp "${ssh_opts[@]}" deploy/alloy/config.alloy "${vps_target}:${{ vars.VPS_PATH }}/alloy/config.alloy"
 
           ssh "${ssh_opts[@]}" "$vps_target" \
             "cd ${{ vars.VPS_PATH }} && docker compose pull && \
