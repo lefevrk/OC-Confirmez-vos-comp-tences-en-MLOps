@@ -25,9 +25,19 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key \
-            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
-            "cd ${{ vars.VPS_PATH }} && docker compose pull && docker compose up -d"
+          ssh_opts=(-o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key)
+          vps_target="${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}"
+
+          # deploy/compose.yml is the single source of truth for this
+          # commit's deployment topology — always overwrite the VPS's copy,
+          # never hand-edit it there. Only .env (secrets, IMAGE_TAG,
+          # HOST_PORT) stays VPS-local.
+          scp "${ssh_opts[@]}" deploy/compose.yml "${vps_target}:${{ vars.VPS_PATH }}/compose.yml"
+
+          ssh "${ssh_opts[@]}" "$vps_target" \
+            "cd ${{ vars.VPS_PATH }} && docker compose pull && \
+             docker compose run --rm api alembic upgrade head && \
+             docker compose up -d"
 
       - name: Wait for readiness
         run: ./scripts/wait_for_ready.sh "${{ vars.PUBLIC_URL }}"

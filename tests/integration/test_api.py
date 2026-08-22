@@ -15,16 +15,51 @@ def test_liveness_does_not_require_dependencies(monkeypatch) -> None:
         assert client.get("/ready").status_code == 503
 
 
-def test_readiness_reports_ready_once_the_model_is_loaded(monkeypatch) -> None:
-    """Readiness succeeds once the startup model is available."""
+class Model:
+    """Minimal startup model."""
 
-    class Model:
-        """Minimal startup model."""
 
+class Recorder:
+    """A prediction recorder that reports ready without touching real storage."""
+
+    def ready(self) -> bool:
+        """Report readiness without touching real storage."""
+        return True
+
+
+class UnavailableRecorder(Recorder):
+    """A prediction recorder simulating a database that has gone down."""
+
+    def ready(self) -> bool:
+        """Simulate a database no longer reachable after startup."""
+        raise RuntimeError("connection lost")
+
+
+def test_readiness_reports_ready_once_the_model_and_database_are_available(monkeypatch) -> None:
+    """Readiness succeeds once the startup model and database are both available."""
     monkeypatch.setattr("api.bootstrap.load_champion", lambda _settings: Model())
+    monkeypatch.setattr("api.bootstrap.connect_prediction_recorder", lambda _settings: Recorder())
     with TestClient(app) as client:
         response = client.get("/ready")
-    assert response.json() == {"status": "ready", "checks": {"model": "ok"}}
+    assert response.json() == {
+        "status": "ready",
+        "checks": {"model": "ok", "database": "ok"},
+    }
+
+
+def test_readiness_reports_degraded_when_the_database_is_unavailable(monkeypatch) -> None:
+    """A database that fails its live check must fail readiness, even if the model loaded."""
+    monkeypatch.setattr("api.bootstrap.load_champion", lambda _settings: Model())
+    monkeypatch.setattr(
+        "api.bootstrap.connect_prediction_recorder", lambda _settings: UnavailableRecorder()
+    )
+    with TestClient(app) as client:
+        response = client.get("/ready")
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "degraded",
+        "checks": {"model": "ok", "database": "error"},
+    }
 
 
 def test_startup_reports_a_degraded_readiness_when_settings_are_invalid(monkeypatch) -> None:

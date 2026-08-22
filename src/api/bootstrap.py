@@ -9,6 +9,7 @@ from loguru import logger
 from api.infra.config import get_settings
 from api.infra.logging import configure_logging
 from api.infra.mlflow_model import load_champion
+from api.infra.postgres.tracking import connect_prediction_recorder
 
 
 @asynccontextmanager
@@ -17,6 +18,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     app.state.settings = None
     app.state.model = None
+    app.state.prediction_recorder = None
     app.state.startup_error = None
 
     try:
@@ -31,5 +33,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         except Exception as exc:
             app.state.startup_error = str(exc)
             logger.bind(error=str(exc)).error("startup_model_load_failed")
+
+        try:
+            app.state.prediction_recorder = connect_prediction_recorder(app.state.settings)
+        except Exception as exc:
+            app.state.startup_error = str(exc)
+            logger.bind(error=str(exc)).error("startup_postgres_connection_failed")
 
     yield

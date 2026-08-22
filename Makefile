@@ -23,15 +23,22 @@ run:
 docker-build:
 	docker compose build
 
-## Run the API Docker image locally
+## Build, migrate, then run the full local Docker stack
 .PHONY: docker-run
 docker-run:
-	docker compose up --build -d
+	docker compose build
+	docker compose run --rm api alembic upgrade head
+	docker compose up -d
 
 ## Stop the local Docker Compose stack
 .PHONY: docker-down
 docker-down:
 	docker compose down
+
+## Re-apply migrations without restarting an already-running stack
+.PHONY: db-migrate
+db-migrate:
+	uv run alembic upgrade head
 
 ## Delete all compiled Python files
 .PHONY: clean
