@@ -17,7 +17,16 @@ _postgres_container: PostgresContainer | None = None
 
 
 def pytest_configure() -> None:
-    """Start a real, migrated PostgreSQL container before any integration test runs."""
+    """Start a real, migrated PostgreSQL container before any integration test runs.
+
+    Also sets the MLflow placeholders: pytest does not guarantee this
+    conftest's pytest_configure runs after tests/conftest.py's, and the
+    Alembic migration below calls get_settings(), which needs them present.
+    """
+    os.environ.setdefault("MLFLOW_TRACKING_URI", "https://mlflow.invalid")
+    os.environ.setdefault("MLFLOW_TRACKING_USERNAME", "test")
+    os.environ.setdefault("MLFLOW_TRACKING_PASSWORD", "test")
+
     global _postgres_container
     _postgres_container = PostgresContainer("postgres:16-alpine")
     _postgres_container.start()
