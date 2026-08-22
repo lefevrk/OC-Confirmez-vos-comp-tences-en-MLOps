@@ -222,6 +222,25 @@ def test_prediction_rejects_an_invalid_model_probability(monkeypatch) -> None:
     assert response.json() == {"detail": "prediction failed"}
 
 
+def test_champion_model_is_loaded_once_across_requests(monkeypatch) -> None:
+    """Startup loads the champion once; each request reuses it, never reloading."""
+    load_count = {"value": 0}
+
+    def counting_load_champion(_settings: object) -> DeterministicModel:
+        load_count["value"] += 1
+        return DeterministicModel()
+
+    monkeypatch.setattr("api.bootstrap.load_champion", counting_load_champion)
+
+    with TestClient(app) as client:
+        first = client.post("/predictions", json=valid_payload())
+        second = client.post("/predictions", json=valid_payload())
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert load_count["value"] == 1
+
+
 def test_prediction_returns_a_generic_500_on_an_unexpected_model_error(monkeypatch) -> None:
     """An unforeseen model crash is logged and answered, not left to propagate raw."""
 
