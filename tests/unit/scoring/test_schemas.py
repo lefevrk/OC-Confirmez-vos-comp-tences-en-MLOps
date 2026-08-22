@@ -7,9 +7,88 @@ from tests.payloads import valid_payload
 from api.modules.scoring.presentation.schemas import PredictionRequest
 
 
-def test_schema_has_all_champion_input_fields() -> None:
-    """The manual schema remains aligned to the champion's 50 columns."""
-    assert len(PredictionRequest.model_fields) == 50
+def test_schema_matches_the_frozen_field_and_alias_contract() -> None:
+    """The schema's field identity and alias mapping are locked, not just their counts.
+
+    A count alone would not catch one champion column silently swapped for
+    another under a different name at the same field total. Two independent
+    sets would not catch two aliases swapped between fields either (e.g.
+    DAYS_BIRTH and DAYS_ID_PUBLISH) — the mapping itself must match.
+    """
+    expected_field_names = {
+        "amt_annuity",
+        "amt_credit",
+        "amt_goods_price",
+        "annuity_income_ratio",
+        "bureau_active_amt_credit_max_overdue_mean",
+        "bureau_active_amt_credit_sum_mean",
+        "bureau_active_amt_credit_sum_sum",
+        "bureau_active_days_credit_enddate_min",
+        "bureau_active_days_credit_max",
+        "bureau_active_days_credit_update_mean",
+        "bureau_amt_credit_max_overdue_mean",
+        "bureau_amt_credit_sum_sum",
+        "bureau_closed_days_credit_max",
+        "bureau_closed_days_credit_update_mean",
+        "bureau_days_credit_enddate_max",
+        "bureau_days_credit_max",
+        "code_gender",
+        "credit_card_cnt_drawings_atm_current_mean",
+        "days_birth",
+        "days_employed",
+        "days_id_publish",
+        "days_registration",
+        "employment_birth_ratio",
+        "ext_source_1",
+        "ext_source_2",
+        "ext_source_3",
+        "income_credit_ratio",
+        "installment_amt_instalment_max",
+        "installment_amt_instalment_sum",
+        "installment_amt_payment_sum",
+        "installment_days_before_due_max",
+        "installment_days_before_due_sum",
+        "installment_days_entry_payment_max",
+        "installment_days_entry_payment_mean",
+        "installment_days_entry_payment_sum",
+        "installment_days_past_due_mean",
+        "installment_payment_difference_mean",
+        "name_education_type",
+        "name_family_status",
+        "occupation_type",
+        "organization_type",
+        "payment_credit_ratio",
+        "pos_months_balance_size",
+        "pos_sk_dpd_def_mean",
+        "previous_application_credit_ratio_mean",
+        "previous_approved_cnt_payment_mean",
+        "previous_approved_cnt_payment_sum",
+        "previous_approved_days_decision_max",
+        "previous_cnt_payment_mean",
+        "previous_days_decision_mean",
+    }
+    expected_aliases_by_field = {
+        "amt_annuity": "AMT_ANNUITY",
+        "amt_credit": "AMT_CREDIT",
+        "amt_goods_price": "AMT_GOODS_PRICE",
+        "code_gender": "CODE_GENDER",
+        "days_birth": "DAYS_BIRTH",
+        "days_employed": "DAYS_EMPLOYED",
+        "days_id_publish": "DAYS_ID_PUBLISH",
+        "days_registration": "DAYS_REGISTRATION",
+        "ext_source_1": "EXT_SOURCE_1",
+        "ext_source_2": "EXT_SOURCE_2",
+        "ext_source_3": "EXT_SOURCE_3",
+        "name_education_type": "NAME_EDUCATION_TYPE",
+        "name_family_status": "NAME_FAMILY_STATUS",
+        "occupation_type": "OCCUPATION_TYPE",
+        "organization_type": "ORGANIZATION_TYPE",
+    }
+
+    assert set(PredictionRequest.model_fields) == expected_field_names
+    assert {
+        name: field.alias for name, field in PredictionRequest.model_fields.items() if field.alias
+    } == expected_aliases_by_field
 
 
 def test_schema_accepts_aliases_and_preserves_model_column_names() -> None:
