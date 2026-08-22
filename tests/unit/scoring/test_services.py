@@ -63,6 +63,18 @@ def test_predict_applies_the_model_threshold() -> None:
     assert result.inference_latency_ms >= 0
 
 
+def test_predict_rejects_the_prediction_below_threshold() -> None:
+    """A probability under the threshold decides against the positive class."""
+    result = predict(FakeModel(probability=0.6), FakeRecorder(), {"feature": 1.0})
+    assert result.decision == 0
+
+
+def test_predict_accepts_the_prediction_at_the_threshold() -> None:
+    """A probability equal to the threshold decides for the positive class (the '>=' rule)."""
+    result = predict(FakeModel(probability=0.7), FakeRecorder(), {"feature": 1.0})
+    assert result.decision == 1
+
+
 def test_predict_rejects_a_probability_outside_the_valid_range() -> None:
     """A model returning a value outside [0, 1] is a hard failure, not a silent decision."""
     with pytest.raises(InvalidProbabilityError):
