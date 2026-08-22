@@ -32,10 +32,13 @@ jobs:
           # source of truth for this commit's deployment topology — always
           # overwrite the VPS's copies, never hand-edit them there. Only
           # .env (secrets, IMAGE_TAG, HOST_PORT) stays VPS-local.
-          # rm -rf guards against a stale docker-auto-created directory at
-          # this path from a previous deploy that ran before this file existed.
+          # Docker auto-creates a missing bind-mount source as a root-owned
+          # directory, so a stale one from a previous deploy can't be removed
+          # by the deploy user directly — go through a throwaway container
+          # instead, using the docker-group access this workflow already has.
           ssh "${ssh_opts[@]}" "$vps_target" \
-            "mkdir -p ${{ vars.VPS_PATH }}/alloy && rm -rf ${{ vars.VPS_PATH }}/alloy/config.alloy"
+            "mkdir -p ${{ vars.VPS_PATH }}/alloy && \
+             docker run --rm -v ${{ vars.VPS_PATH }}/alloy:/target alpine rm -rf /target/config.alloy"
           scp "${ssh_opts[@]}" deploy/compose.yml "${vps_target}:${{ vars.VPS_PATH }}/compose.yml"
           scp "${ssh_opts[@]}" deploy/alloy/config.alloy "${vps_target}:${{ vars.VPS_PATH }}/alloy/config.alloy"
 
