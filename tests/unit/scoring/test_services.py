@@ -184,3 +184,20 @@ def test_predict_gives_identical_inputs_the_same_fingerprint_but_different_ids()
 
     assert first.prediction_id != second.prediction_id
     assert fingerprints == [fingerprints[0], fingerprints[0]]
+
+
+def test_predict_gives_different_inputs_different_fingerprints() -> None:
+    """input_hash distinguishes payloads instead of collapsing them together."""
+    model = FakeModel(probability=0.8)
+    fingerprints: list[str] = []
+    sink_id = logger.add(
+        lambda message: fingerprints.append(message.record["extra"]["input_hash"]),
+        level="INFO",
+    )
+    try:
+        predict(model, FakeRecorder(), {"feature": 1.0})
+        predict(model, FakeRecorder(), {"feature": 2.0})
+    finally:
+        logger.remove(sink_id)
+
+    assert fingerprints[0] != fingerprints[1]
