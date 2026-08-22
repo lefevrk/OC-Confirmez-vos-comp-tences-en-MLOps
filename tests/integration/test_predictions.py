@@ -2,10 +2,15 @@
 
 from fastapi.testclient import TestClient
 import pytest
+from sqlalchemy import delete, select
 from tests.payloads import valid_payload
 
 from api.app import app
 import api.infra.config as config_module
+from api.infra.config import get_settings
+from api.infra.postgres.models import PredictionEventRecord
+from api.infra.postgres.tracking import PostgresPredictionRecorder
+from api.modules.scoring.presentation.schemas import PredictionRequest
 
 
 class DeterministicModel:
@@ -90,6 +95,35 @@ def test_prediction_succeeds_without_a_token_when_authentication_is_disabled() -
     assert body["decision"] == 1
     assert body["model_version"] == "3"
     assert body["prediction_id"]
+
+
+def test_prediction_persists_to_a_real_database(monkeypatch) -> None:
+    """A successful prediction is readable back from the real, migrated PostgreSQL instance."""
+    recorder = PostgresPredictionRecorder(
+        get_settings().database_url, model_name="credit_scoring", model_alias="champion"
+    )
+    monkeypatch.setattr("api.bootstrap.connect_prediction_recorder", lambda _settings: recorder)
+
+    with TestClient(app) as client:
+        response = client.post("/predictions", json=valid_payload())
+    assert response.status_code == 200
+    prediction_id = response.json()["prediction_id"]
+
+    with recorder.engine.connect() as connection:
+        row = connection.execute(
+            select(PredictionEventRecord).where(
+                PredictionEventRecord.prediction_id == prediction_id
+            )
+        ).one()
+    with recorder.engine.begin() as connection:
+        connection.execute(delete(PredictionEventRecord))
+
+    assert row.prediction_id == prediction_id
+    assert row.probability == pytest.approx(0.8)
+    assert row.decision == 1
+    assert row.model_version == "3"
+    assert row.inference_latency_ms is not None
+    assert row.features == PredictionRequest.model_validate(valid_payload()).model_features()
 
 
 def test_prediction_rejects_a_malformed_payload() -> None:
